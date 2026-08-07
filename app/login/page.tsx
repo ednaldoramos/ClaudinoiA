@@ -1,9 +1,40 @@
-import Link from "next/link";
+"use client";
+
+import { useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const router = useRouter();
+
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [erro, setErro] = useState("");
+  const [carregando, setCarregando] = useState(false);
+
+  async function entrar(e: React.FormEvent) {
+    e.preventDefault();
+
+    setErro("");
+    setCarregando(true);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password: senha,
+    });
+
+    setCarregando(false);
+
+    if (error) {
+      setErro(error.message);
+      return;
+    }
+
+    router.push("/dashboard");
+  }
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-black text-white flex items-center justify-center px-6">
-
       <div className="w-full max-w-md">
 
         <div className="bg-white/5 border border-white/10 rounded-2xl p-8 shadow-xl">
@@ -16,8 +47,7 @@ export default function LoginPage() {
             Acesse sua inteligência artificial personalizada.
           </p>
 
-
-          <form className="space-y-5">
+          <form onSubmit={entrar} className="space-y-5">
 
             <div>
               <label className="text-sm text-slate-300">
@@ -26,11 +56,12 @@ export default function LoginPage() {
 
               <input
                 type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu@email.com"
-                className="w-full mt-2 px-4 py-3 rounded-xl bg-black/40 border border-white/10 outline-none focus:border-blue-500"
+                className="w-full mt-2 px-4 py-3 rounded-xl bg-black/40 border border-white/10 outline-none"
               />
             </div>
-
 
             <div>
               <label className="text-sm text-slate-300">
@@ -39,37 +70,32 @@ export default function LoginPage() {
 
               <input
                 type="password"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
                 placeholder="********"
-                className="w-full mt-2 px-4 py-3 rounded-xl bg-black/40 border border-white/10 outline-none focus:border-blue-500"
+                className="w-full mt-2 px-4 py-3 rounded-xl bg-black/40 border border-white/10 outline-none"
               />
             </div>
 
+            {erro && (
+              <p className="text-red-400 text-sm">
+                {erro}
+              </p>
+            )}
 
             <button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-semibold transition"
+              disabled={carregando}
+              className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-semibold"
             >
-              Entrar
+              {carregando ? "Entrando..." : "Entrar"}
             </button>
 
           </form>
 
-
-          <div className="text-center mt-6">
-
-            <Link
-              href="/"
-              className="text-sm text-slate-400 hover:text-white"
-            >
-              Voltar para início
-            </Link>
-
-          </div>
-
         </div>
 
       </div>
-
     </main>
   );
 }
