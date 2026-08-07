@@ -14,15 +14,18 @@ export class ClaudinoCore {
 
 
 
-  constructor() {
+  constructor(){
+
+    this.memory =
+      new MemoryManager();
 
 
-    this.memory = new MemoryManager();
+    this.security =
+      new SecurityManager();
 
-    this.security = new SecurityManager();
 
-    this.ai = new AIManager();
-
+    this.ai =
+      new AIManager();
 
   }
 
@@ -34,31 +37,26 @@ export class ClaudinoCore {
 
 
     const security =
-
       await this.security.verify();
 
 
 
     if(!security){
 
-
       return {
 
         reply:
-
         "Acesso bloqueado."
 
       };
-
 
     }
 
 
 
-
-
-    return await this.ai.chat(data);
-
+    return await this.ai.chat(
+      data
+    );
 
 
   }
@@ -69,4 +67,5 @@ export class ClaudinoCore {
 
 
 
-export const core = new ClaudinoCore();
+export const core =
+new ClaudinoCore();

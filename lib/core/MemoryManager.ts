@@ -1,14 +1,13 @@
-import {
-  getMemories,
-  saveMemory,
-} from "@/lib/memories";
+import { supabaseServer } from "@/lib/supabaseServer";
 
 
-import {
-  extractMemory,
-} from "@/lib/memoryExtractor";
-
-
+export type Memory = {
+  id?: string;
+  user_id: string;
+  chave: string;
+  valor: string;
+  created_at?: string;
+};
 
 
 
@@ -16,22 +15,148 @@ export class MemoryManager {
 
 
 
-  async getContext(
+  async getUserMemories(
     userId: string
   ) {
 
 
+    const { data, error } =
+      await supabaseServer
 
-    const result =
+        .from("memories")
 
-      await getMemories(
-        userId
+        .select("*")
+
+        .eq(
+          "user_id",
+          userId
+        )
+
+        .order(
+          "created_at",
+          {
+            ascending: false,
+          }
+        );
+
+
+
+    if(error){
+
+      console.error(
+        "Erro buscando memórias:",
+        error
       );
 
 
+      return [];
 
-    return result.data || [];
+    }
 
+
+
+    return data || [];
+
+  }
+
+
+
+
+
+
+
+  async getContext(
+    userId:string
+  ){
+
+
+    return await this.getUserMemories(
+      userId
+    );
+
+
+  }
+
+
+
+
+
+
+
+
+  async learn(
+    userId:string,
+    message:string
+  ){
+
+
+    const text =
+      message.toLowerCase();
+
+
+
+    const patterns = [
+
+      {
+        chave:"nome",
+        regex:/meu nome é (.+)/
+      },
+
+      {
+        chave:"profissao",
+        regex:/minha profissão é (.+)/
+      },
+
+      {
+        chave:"projeto",
+        regex:/meu projeto é (.+)/
+      },
+
+      {
+        chave:"sonho",
+        regex:/meu sonho é (.+)/
+      }
+
+    ];
+
+
+
+
+
+    for(const item of patterns){
+
+
+      const match =
+        text.match(
+          item.regex
+        );
+
+
+
+      if(match){
+
+
+        return {
+
+          protected:true,
+
+          chave:item.chave,
+
+          valor:match[1]
+
+        };
+
+
+      }
+
+
+    }
+
+
+
+
+
+    return null;
 
 
   }
@@ -44,52 +169,61 @@ export class MemoryManager {
 
 
 
-  async learn(
-
-    userId: string,
-
-    message: string
-
-  ) {
+  async saveMemory(
+    userId:string,
+    chave:string,
+    valor:string
+  ){
 
 
 
-    const memory =
+    const { data: existing } =
 
-      await extractMemory(
+      await supabaseServer
 
-        userId,
+        .from("memories")
 
-        message
+        .select("id")
 
-      );
+        .eq(
+          "user_id",
+          userId
+        )
 
+        .eq(
+          "chave",
+          chave
+        )
 
-
-
-
-    if(
-
-      memory &&
-
-      memory.chave &&
-
-      memory.valor
-
-    ) {
+        .maybeSingle();
 
 
 
-      await saveMemory(
 
-        userId,
 
-        memory.chave,
 
-        memory.valor
 
-      );
+    if(existing){
 
+
+      return await supabaseServer
+
+        .from("memories")
+
+        .update({
+
+          valor,
+
+        })
+
+        .eq(
+          "id",
+          existing.id
+        )
+
+        .select()
+
+        .single();
 
 
     }
@@ -98,7 +232,65 @@ export class MemoryManager {
 
 
 
-    return memory;
+
+
+
+    return await supabaseServer
+
+      .from("memories")
+
+      .insert({
+
+        user_id:userId,
+
+        chave,
+
+        valor,
+
+      })
+
+      .select()
+
+      .single();
+
+
+  }
+
+
+
+
+
+
+
+
+
+  formatMemoriesForAI(
+    memories:Memory[]
+  ){
+
+
+
+    if(!memories.length){
+
+      return "";
+
+    }
+
+
+
+
+
+
+    return memories
+
+      .map(
+
+        memory =>
+          `${memory.chave}: ${memory.valor}`
+
+      )
+
+      .join("\n");
 
 
 

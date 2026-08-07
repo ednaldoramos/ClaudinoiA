@@ -1,12 +1,8 @@
 import OpenAI from "openai";
 
-
 const openai = new OpenAI({
-
   apiKey: process.env.OPENAI_API_KEY,
-
 });
-
 
 
 export class AIManager {
@@ -27,78 +23,136 @@ export class AIManager {
   }) {
 
 
-
     console.log(
-
       "AIManager recebeu:",
-
       data
-
     );
 
 
 
-
-
     const pergunta =
-
       data.message
-
-        .toLowerCase();
-
+      .toLowerCase();
 
 
 
+    const memoria = data.memoryContext
+      .split("\n")
+      .map(item => {
+
+        const partes = item.split(":");
+
+        return {
+
+          chave: partes[0]
+          ?.trim()
+          .toLowerCase(),
+
+          valor: partes
+          .slice(1)
+          .join(":")
+          .trim()
+
+        };
+
+      });
 
 
 
-    const nomeMemoria =
+    const buscarMemoria = (
+      chave:string
+    ) => {
 
-      data.memoryContext
+      return memoria.find(
+        item =>
+        item.chave === chave
+      )
+      ?.valor;
 
-        .split("\n")
-
-        .find((item)=>
-
-          item.startsWith("nome:")
-
-        )
-
-        ?.replace(
-
-          "nome:",
-
-          ""
-
-        )
-
-        .trim();
+    };
 
 
 
 
+    const respostasDiretas = [
+
+      {
+        palavras:[
+          "qual meu nome",
+          "meu nome"
+        ],
+        chave:"nome"
+      },
+
+
+      {
+        palavras:[
+          "qual meu projeto",
+          "meu projeto"
+        ],
+        chave:"projeto"
+      },
+
+
+      {
+        palavras:[
+          "qual minha profissão",
+          "minha profissao",
+          "meu trabalho"
+        ],
+        chave:"profissao"
+      },
+
+
+      {
+        palavras:[
+          "qual meu sonho",
+          "meu sonho"
+        ],
+        chave:"sonho"
+      },
+
+
+      {
+        palavras:[
+          "qual minha ferramenta",
+          "minha ferramenta"
+        ],
+        chave:"ferramenta"
+      }
+
+    ];
 
 
 
-    if(
-
-      pergunta.includes("qual meu nome") ||
-
-      pergunta.includes("qual é o meu nome")
-
+    for(
+      const item of respostasDiretas
     ){
 
+      if(
+        item.palavras.some(
+          palavra =>
+          pergunta.includes(palavra)
+        )
+      ){
 
-      return {
+
+        return {
+
+          reply:
+
+          buscarMemoria(
+            item.chave
+          )
+          ?
+          `Sua ${item.chave} é ${buscarMemoria(item.chave)}.`
+          :
+          `Ainda não tenho essa informação salva.`
+
+        };
 
 
-        reply:
-
-        `Seu nome é ${nomeMemoria || "não informado"}.`
-
-
-      };
-
+      }
 
     }
 
@@ -106,28 +160,17 @@ export class AIManager {
 
 
 
-
-
-
     const nome =
-
-      nomeMemoria || "usuário";
-
-
-
+      buscarMemoria("nome")
+      ||
+      "usuário";
 
 
 
-    // Limita histórico para evitar excesso de contexto
 
     const historyLimitado =
-
       (data.history || [])
-
-        .slice(-10);
-
-
-
+      .slice(-10);
 
 
 
@@ -135,85 +178,59 @@ export class AIManager {
     const messages = [
 
 
-
       {
-
 
         role:"system" as const,
 
-
         content:
-
 `
 Você é o ClaudinoIA.
 
-Você é um assistente inteligente,
-profissional e amigável.
+Você é uma inteligência artificial profissional.
 
-O nome do usuário é ${nome}.
+Nome do usuário:
+${nome}
 
-Memórias importantes:
+
+Memórias do usuário:
 
 ${data.memoryContext}
 
 
-
 Regras:
 
-- Responda em português do Brasil.
-- Seja natural.
-- Não invente informações.
-- Use as memórias quando necessário.
-- Ajude o usuário com o projeto ClaudinoIA.
+- Responda em português brasileiro.
+- Use as memórias quando forem relevantes.
+- Nunca invente dados.
+- Seja natural e inteligente.
+- Ajude no desenvolvimento do projeto ClaudinoIA.
 `
 
       },
 
 
 
-
-
-
-
       ...historyLimitado.map(
 
-        (item)=>(
+        item => ({
 
+          role:item.role,
 
-          {
+          content:item.content
 
-
-            role:item.role,
-
-
-            content:item.content
-
-
-          }
-
-
-        )
-
+        })
 
       ),
 
 
 
-
-
-
-
       {
-
 
         role:"user" as const,
 
-
         content:data.message
 
-
       }
-
 
 
     ];
@@ -222,23 +239,12 @@ Regras:
 
 
 
-
-
-
-
     const completion =
-
       await openai.chat.completions.create({
-
-
 
         model:"gpt-4.1-mini",
 
-
-
         messages,
-
-
 
       });
 
@@ -246,36 +252,21 @@ Regras:
 
 
 
-
-
-
-
     return {
-
 
       reply:
 
-
-        completion
-
-        .choices[0]
-
-        ?.message
-
-        ?.content ||
-
-
-
-        "Não consegui responder."
-
+      completion
+      .choices[0]
+      ?.message
+      ?.content
+      ||
+      "Não consegui responder."
 
     };
 
 
-
-
   }
-
 
 
 }
