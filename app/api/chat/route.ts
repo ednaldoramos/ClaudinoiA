@@ -14,10 +14,10 @@ import {
 
 function isConfirmation(message: string) {
 
-  const text = message
-    .toLowerCase()
-    .trim();
-
+  const text =
+    message
+      .toLowerCase()
+      .trim();
 
   return (
     text === "sim" ||
@@ -29,6 +29,22 @@ function isConfirmation(message: string) {
 
 }
 
+
+function isMemoryCorrection(message: string) {
+
+  const text =
+    message
+      .toLowerCase()
+      .trim();
+
+  return (
+    text.includes("não é uma ferramenta") ||
+    text.includes("nao é uma ferramenta") ||
+    text.includes("não é ferramenta") ||
+    text.includes("nao é ferramenta")
+  );
+
+}
 
 
 export async function POST(
@@ -62,7 +78,10 @@ export async function POST(
 
 
 
-    if (!message || !conversationId) {
+    if (
+      !message ||
+      !conversationId
+    ) {
 
       return NextResponse.json(
         {
@@ -93,13 +112,11 @@ export async function POST(
         );
 
 
-
       if (plan) {
 
 
         const limit =
           plan.messages_limit;
-
 
 
         if (limit > 0) {
@@ -112,14 +129,13 @@ export async function POST(
             );
 
 
-
           if (!usage.allowed) {
 
 
             return NextResponse.json({
 
               reply:
-`🚀 Você atingiu o limite do plano ${plan.plan_name}.
+                `🚀 Você atingiu o limite do plano ${plan.plan_name}.
 
 Mensagens usadas:
 ${usage.used}/${limit}
@@ -144,6 +160,10 @@ Faça upgrade do seu plano para continuar usando o ClaudinoIA.`
 
 
 
+    /*
+      CONFIRMAÇÃO DE MEMÓRIA
+    */
+
     if (
       userId &&
       isConfirmation(message)
@@ -167,7 +187,7 @@ Faça upgrade do seu plano para continuar usando o ClaudinoIA.`
         return NextResponse.json({
 
           reply:
-`Pronto! Atualizei sua memória.
+            `Pronto! Atualizei sua memória.
 
 ${confirmed.chave}: ${confirmed.valor}`
 
@@ -183,6 +203,9 @@ ${confirmed.chave}: ${confirmed.valor}`
 
 
 
+    /*
+      HISTÓRICO DA CONVERSA
+    */
 
     const {
       data: history,
@@ -204,13 +227,13 @@ ${confirmed.chave}: ${confirmed.valor}`
       .order(
         "created_at",
         {
-          ascending:true,
+          ascending: true,
         }
       );
 
 
 
-    if(historyError){
+    if (historyError) {
 
       throw historyError;
 
@@ -222,17 +245,23 @@ ${confirmed.chave}: ${confirmed.valor}`
 
 
 
-    let memories:any[] = [];
+    let memories: any[] = [];
 
-    let memoryResult:any = null;
-
-
+    let memoryResult: any = null;
 
 
 
-    if(userId){
 
 
+
+
+    if (userId) {
+
+
+
+      /*
+        BUSCA MEMÓRIAS ATUAIS
+      */
 
       memories =
         await core.memory.getContext(
@@ -240,6 +269,11 @@ ${confirmed.chave}: ${confirmed.valor}`
         );
 
 
+
+
+      /*
+        APRENDIZADO
+      */
 
       memoryResult =
         await core.memory.learn(
@@ -251,19 +285,143 @@ ${confirmed.chave}: ${confirmed.valor}`
 
 
 
-      if(
+
+
+      /*
+        CORREÇÃO EXPLÍCITA
+      */
+
+      if (
+        memoryResult &&
+        memoryResult.protected &&
+        isMemoryCorrection(message)
+      ) {
+
+
+        /*
+          O usuário está corrigindo uma
+          informação anterior.
+
+          Não vamos permitir que a
+          memória antiga continue sendo
+          interpretada como verdade.
+        */
+
+
+        const { data: ferramentaAtual } =
+
+          await supabaseServer
+
+            .from("memories")
+
+            .select("*")
+
+            .eq(
+              "user_id",
+              userId
+            )
+
+            .eq(
+              "chave",
+              "ferramenta"
+            )
+            .maybeSingle();
+
+
+
+
+
+        /*
+          Remove a memória antiga que
+          estava causando o problema.
+        */
+
+        if (ferramentaAtual) {
+
+
+          await supabaseServer
+
+            .from("memories")
+
+            .delete()
+
+            .eq(
+              "id",
+              ferramentaAtual.id
+            );
+
+
+        }
+
+
+
+
+
+
+        /*
+          Salva a correção como memória
+          permanente.
+        */
+
+        const correctionText =
+          message.trim();
+
+
+        await core.memory.saveMemory(
+
+          userId,
+
+          "correcao_mancebo",
+
+          correctionText
+
+        );
+
+
+
+
+
+
+        await addMessageUsage(
+          userId
+        );
+
+
+
+
+        return NextResponse.json({
+
+          reply:
+            "Entendido. Corrigi minha memória: MANCEBO não deve ser tratado como ferramenta. Vou considerar essa correção nas próximas conversas."
+
+        });
+
+
+      }
+
+
+
+
+
+
+
+      /*
+        OUTRAS ALTERAÇÕES DE MEMÓRIA
+      */
+
+      if (
         memoryResult &&
         memoryResult.protected
-      ){
-
+      ) {
 
 
         const memoriaAtual =
           memories.find(
             item =>
-            item.chave ===
-            memoryResult.chave
+              item.chave ===
+              memoryResult.chave
           );
+
 
 
 
@@ -283,7 +441,7 @@ ${confirmed.chave}: ${confirmed.valor}`
         return NextResponse.json({
 
           reply:
-`Ednaldo, encontrei uma alteração na sua memória.
+            `Ednaldo, encontrei uma alteração na sua memória.
 
 Atualmente tenho registrado:
 
@@ -298,9 +456,7 @@ Deseja atualizar essa informação?`
         });
 
 
-
       }
-
 
 
     }
@@ -311,12 +467,17 @@ Deseja atualizar essa informação?`
 
 
 
+
+    /*
+      CONTEXTO DE MEMÓRIA
+    */
+
     const memoryContext = memories
 
       .map(
 
         memory =>
-        `${memory.chave}: ${memory.valor}`
+          `${memory.chave}: ${memory.valor}`
 
       )
 
@@ -327,6 +488,10 @@ Deseja atualizar essa informação?`
 
 
 
+
+    /*
+      IA
+    */
 
     const aiResponse =
 
@@ -350,8 +515,7 @@ Deseja atualizar essa informação?`
 
 
 
-
-    if(userId){
+    if (userId) {
 
       await addMessageUsage(
         userId
@@ -365,6 +529,9 @@ Deseja atualizar essa informação?`
 
 
 
+    /*
+      ATUALIZA CONVERSA
+    */
 
     await supabaseServer
 
@@ -373,8 +540,8 @@ Deseja atualizar essa informação?`
       .update({
 
         updated_at:
-        new Date()
-        .toISOString(),
+          new Date()
+            .toISOString(),
 
       })
 
@@ -392,17 +559,14 @@ Deseja atualizar essa informação?`
     return NextResponse.json({
 
       reply:
-      aiResponse.reply,
+        aiResponse.reply,
 
     });
 
 
+  }
 
-
-
-
-  } catch(error:any){
-
+  catch (error: any) {
 
 
     console.error(
@@ -417,13 +581,13 @@ Deseja atualizar essa informação?`
       {
 
         reply:
-        `Erro da IA: ${error.message}`,
+          `Erro da IA: ${error.message}`,
 
       },
 
       {
 
-        status:500,
+        status: 500,
 
       }
 
@@ -431,6 +595,5 @@ Deseja atualizar essa informação?`
 
 
   }
-
 
 }

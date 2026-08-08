@@ -10,9 +10,7 @@ export type Memory = {
 };
 
 
-
 export class MemoryManager {
-
 
 
   async getUserMemories(
@@ -23,21 +21,21 @@ export class MemoryManager {
     const { data, error } =
       await supabaseServer
 
-        .from("memories")
+      .from("memories")
 
-        .select("*")
+      .select("*")
 
-        .eq(
-          "user_id",
-          userId
-        )
+      .eq(
+        "user_id",
+        userId
+      )
 
-        .order(
-          "created_at",
-          {
-            ascending: false,
-          }
-        );
+      .order(
+        "created_at",
+        {
+          ascending:false,
+        }
+      );
 
 
 
@@ -47,7 +45,6 @@ export class MemoryManager {
         "Erro buscando memórias:",
         error
       );
-
 
       return [];
 
@@ -63,21 +60,20 @@ export class MemoryManager {
 
 
 
-
-
   async getContext(
     userId:string
   ){
 
 
-    return await this.getUserMemories(
-      userId
-    );
+    const memories =
+      await this.getUserMemories(
+        userId
+      );
 
+
+    return memories;
 
   }
-
-
 
 
 
@@ -91,31 +87,75 @@ export class MemoryManager {
 
 
     const text =
-      message.toLowerCase();
+      message
+      .toLowerCase()
+      .trim();
+
+
+
+    /*
+      CORREÇÕES DE MEMÓRIA
+    */
+
+
+    if(
+      text.includes("não é uma ferramenta") ||
+      text.includes("não é ferramenta")
+    ){
+
+
+      const palavra =
+        message
+        .split("não")[0]
+        .trim();
+
+
+
+      return {
+
+        protected:true,
+
+        chave:"correcao",
+
+        valor:
+        `O usuário corrigiu que "${palavra}" não deve ser tratado como ferramenta.`
+
+      };
+
+
+    }
+
+
+
 
 
 
     const patterns = [
+
 
       {
         chave:"nome",
         regex:/meu nome é (.+)/
       },
 
+
       {
         chave:"profissao",
         regex:/minha profissão é (.+)/
       },
+
 
       {
         chave:"projeto",
         regex:/meu projeto é (.+)/
       },
 
+
       {
         chave:"sonho",
         regex:/meu sonho é (.+)/
       }
+
 
     ];
 
@@ -123,7 +163,11 @@ export class MemoryManager {
 
 
 
-    for(const item of patterns){
+
+    for(
+      const item of patterns
+    ){
+
 
 
       const match =
@@ -142,7 +186,8 @@ export class MemoryManager {
 
           chave:item.chave,
 
-          valor:match[1]
+          valor:
+          match[1]
 
         };
 
@@ -166,9 +211,6 @@ export class MemoryManager {
 
 
 
-
-
-
   async saveMemory(
     userId:string,
     chave:string,
@@ -176,28 +218,25 @@ export class MemoryManager {
   ){
 
 
-
-    const { data: existing } =
+    const { data:existing } =
 
       await supabaseServer
 
-        .from("memories")
+      .from("memories")
 
-        .select("id")
+      .select("id")
 
-        .eq(
-          "user_id",
-          userId
-        )
+      .eq(
+        "user_id",
+        userId
+      )
 
-        .eq(
-          "chave",
-          chave
-        )
+      .eq(
+        "chave",
+        chave
+      )
 
-        .maybeSingle();
-
-
+      .maybeSingle();
 
 
 
@@ -208,22 +247,22 @@ export class MemoryManager {
 
       return await supabaseServer
 
-        .from("memories")
+      .from("memories")
 
-        .update({
+      .update({
 
-          valor,
+        valor,
 
-        })
+      })
 
-        .eq(
-          "id",
-          existing.id
-        )
+      .eq(
+        "id",
+        existing.id
+      )
 
-        .select()
+      .select()
 
-        .single();
+      .single();
 
 
     }
@@ -233,31 +272,27 @@ export class MemoryManager {
 
 
 
-
-
     return await supabaseServer
 
-      .from("memories")
+    .from("memories")
 
-      .insert({
+    .insert({
 
-        user_id:userId,
+      user_id:userId,
 
-        chave,
+      chave,
 
-        valor,
+      valor,
 
-      })
+    })
 
-      .select()
+    .select()
 
-      .single();
+    .single();
+
 
 
   }
-
-
-
 
 
 
@@ -269,8 +304,9 @@ export class MemoryManager {
   ){
 
 
-
-    if(!memories.length){
+    if(
+      !memories.length
+    ){
 
       return "";
 
@@ -279,23 +315,20 @@ export class MemoryManager {
 
 
 
-
-
     return memories
 
-      .map(
+    .map(
 
-        memory =>
-          `${memory.chave}: ${memory.valor}`
+      memory =>
 
-      )
+      `${memory.chave}: ${memory.valor}`
 
-      .join("\n");
+    )
 
+    .join("\n");
 
 
   }
-
 
 
 }
