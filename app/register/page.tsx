@@ -1,9 +1,9 @@
-```tsx
 "use client";
 
-import { useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -15,8 +15,8 @@ export default function RegisterPage() {
   const [sucesso, setSucesso] = useState("");
   const [carregando, setCarregando] = useState(false);
 
-  async function criarConta(e: React.FormEvent) {
-    e.preventDefault();
+  async function criarConta(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
     setErro("");
     setSucesso("");
@@ -33,51 +33,60 @@ export default function RegisterPage() {
 
     setCarregando(true);
 
-    const { data, error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password: senha,
-    });
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password: senha,
+      });
 
-    setCarregando(false);
+      if (error) {
+        setErro(error.message);
+        return;
+      }
 
-    if (error) {
-      setErro(error.message);
-      return;
+      if (data.session) {
+        router.push("/dashboard");
+        router.refresh();
+        return;
+      }
+
+      setSucesso(
+        "Conta criada com sucesso! Verifique seu email para confirmar a conta e depois faça login."
+      );
+    } catch (error) {
+      console.error(error);
+      setErro("Não foi possível criar a conta. Tente novamente.");
+    } finally {
+      setCarregando(false);
     }
-
-    if (data.session) {
-      router.push("/dashboard");
-      return;
-    }
-
-    setSucesso(
-      "Conta criada com sucesso! Verifique seu email para confirmar a conta e depois faça login."
-    );
   }
 
   return (
     <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-8 shadow-xl">
-          <h1 className="text-3xl font-bold text-center mb-2">
-            Criar conta no{" "}
-            <span className="text-blue-500">ClaudinoIA</span>
+        <div className="bg-slate-900 border border-white/10 rounded-2xl p-8 shadow-xl">
+          <h1 className="text-3xl font-bold text-center">
+            Criar conta no ClaudinoIA
           </h1>
 
-          <p className="text-slate-400 text-center mb-8">
+          <p className="text-slate-400 text-center mt-3 mb-8">
             Crie sua conta e comece a usar o ClaudinoIA.
           </p>
 
           <form onSubmit={criarConta} className="space-y-5">
             <div>
-              <label className="text-sm text-slate-300">
+              <label
+                htmlFor="email"
+                className="text-sm text-slate-300"
+              >
                 Email
               </label>
 
               <input
+                id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
                 placeholder="seu@email.com"
                 required
                 autoComplete="email"
@@ -86,14 +95,18 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="text-sm text-slate-300">
+              <label
+                htmlFor="senha"
+                className="text-sm text-slate-300"
+              >
                 Senha
               </label>
 
               <input
+                id="senha"
                 type="password"
                 value={senha}
-                onChange={(e) => setSenha(e.target.value)}
+                onChange={(event) => setSenha(event.target.value)}
                 placeholder="Mínimo de 6 caracteres"
                 required
                 autoComplete="new-password"
@@ -102,14 +115,20 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="text-sm text-slate-300">
+              <label
+                htmlFor="confirmarSenha"
+                className="text-sm text-slate-300"
+              >
                 Confirmar senha
               </label>
 
               <input
+                id="confirmarSenha"
                 type="password"
                 value={confirmarSenha}
-                onChange={(e) => setConfirmarSenha(e.target.value)}
+                onChange={(event) =>
+                  setConfirmarSenha(event.target.value)
+                }
                 placeholder="Digite a senha novamente"
                 required
                 autoComplete="new-password"
@@ -119,17 +138,13 @@ export default function RegisterPage() {
 
             {erro && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
-                <p className="text-red-400 text-sm">
-                  {erro}
-                </p>
+                <p className="text-red-400 text-sm">{erro}</p>
               </div>
             )}
 
             {sucesso && (
               <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3">
-                <p className="text-green-400 text-sm">
-                  {sucesso}
-                </p>
+                <p className="text-green-400 text-sm">{sucesso}</p>
               </div>
             )}
 
@@ -147,17 +162,15 @@ export default function RegisterPage() {
               Já possui uma conta?
             </p>
 
-            <button
-              type="button"
-              onClick={() => router.push("/login")}
-              className="mt-2 text-blue-400 hover:text-blue-300 font-semibold"
+            <Link
+              href="/login"
+              className="inline-block mt-2 text-blue-400 hover:text-blue-300 font-semibold"
             >
               Voltar para entrar
-            </button>
+            </Link>
           </div>
         </div>
       </div>
     </main>
   );
 }
-```
