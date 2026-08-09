@@ -81,7 +81,9 @@ export default function LoginPage() {
 
             {erro && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
-                <p className="text-red-400 text-sm">{erro}</p>
+                <p className="text-red-400 text-sm">
+                  {erro}
+                </p>
               </div>
             )}
 
@@ -113,3 +115,4 @@ export default function LoginPage() {
   );
 }
 ```
+
