@@ -36,19 +36,15 @@ router.push("/dashboard");
 
 }
 
-return ( <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-4"> <div className="w-full max-w-md"> <div className="bg-white/5 border border-white/10 rounded-2xl p-8 shadow-xl">
+return ( <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-4"> <div className="w-full max-w-md"> <div className="bg-white/5 border border-white/10 rounded-2xl p-8 shadow-xl"> <h1 className="text-3xl font-bold text-center mb-2">
+Entrar no <span className="text-blue-500">ClaudinoIA</span> </h1>
 
 ```
-      <h1 className="text-3xl font-bold text-center mb-2">
-        Entrar no <span className="text-blue-500">ClaudinoIA</span>
-      </h1>
-
       <p className="text-slate-400 text-center mb-8">
         Acesse sua inteligência artificial personalizada.
       </p>
 
       <form onSubmit={entrar} className="space-y-5">
-
         <div>
           <label className="text-sm text-slate-300">
             Email
@@ -96,7 +92,6 @@ return ( <main className="min-h-screen bg-slate-950 text-white flex items-center
         >
           {carregando ? "Entrando..." : "Entrar"}
         </button>
-
       </form>
 
       <div className="mt-6 text-center">
@@ -112,7 +107,6 @@ return ( <main className="min-h-screen bg-slate-950 text-white flex items-center
           Criar conta grátis
         </button>
       </div>
-
     </div>
   </div>
 </main>
