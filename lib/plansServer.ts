@@ -1,4 +1,3 @@
-@'
 import { supabaseServer } from "@/lib/supabaseServer";
 
 const MENTOR_USER_ID =
@@ -34,8 +33,7 @@ export async function getUserPlanServer(
   /*
     CLIENTES NORMAIS
 
-    Mantém exatamente a lógica existente
-    baseada em user_plans.
+    Mantém a lógica baseada em user_plans.
   */
 
   const {
@@ -53,10 +51,7 @@ export async function getUserPlanServer(
         features
       )
     `)
-    .eq(
-      "user_id",
-      userId
-    )
+    .eq("user_id", userId)
     .single();
 
   if (error) {
@@ -79,17 +74,9 @@ export async function getUserPlanServer(
     userPlan.plans;
 
   return {
-    plan_name:
-      plan.name,
-
-    price:
-      Number(plan.price),
-
-    messages_limit:
-      plan.messages_limit,
-
-    features:
-      plan.features ?? [],
+    plan_name: plan.name,
+    price: Number(plan.price),
+    messages_limit: plan.messages_limit,
+    features: plan.features ?? [],
   };
 }
-'@ | Set-Content -Path ".\lib\plansServer.ts" -Encoding UTF8
