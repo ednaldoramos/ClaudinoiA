@@ -2,7 +2,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 
 export async function checkMessageLimit(
   userId: string,
-  limit?: number | null
+  _limit?: number | null
 ) {
   const { data, error } = await supabaseServer
     .from("client_credits")
@@ -25,44 +25,26 @@ export async function checkMessageLimit(
 }
 
 export async function addMessageUsage(userId: string) {
-  const { data: current, error: readError } =
-    await supabaseServer
-      .from("client_credits")
-      .select("credits")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-  if (readError) {
-    throw readError;
-  }
-
-  const currentCredits = current?.credits ?? 0;
-
-  if (currentCredits <= 0) {
-    return {
-      credits: 0,
-      allowed: false,
-    };
-  }
-
-  const newCredits = currentCredits - 1;
-
   const { data, error } = await supabaseServer
-    .from("client_credits")
-    .update({
-      credits: newCredits,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", userId)
-    .select("credits")
-    .single();
+    .rpc("consume_client_credit", {
+      p_user_id: userId,
+    });
 
   if (error) {
+    console.error(
+      "ERRO AO CONSUMIR CRÉDITO:",
+      error
+    );
+
     throw error;
   }
 
+  const result = Array.isArray(data)
+    ? data[0]
+    : data;
+
   return {
-    credits: data.credits,
-    allowed: true,
+    credits: result?.credits ?? 0,
+    allowed: result?.allowed ?? false,
   };
 }

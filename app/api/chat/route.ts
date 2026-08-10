@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 import { supabaseServer } from "@/lib/supabaseServer";
 import { core } from "@/lib/core/ClaudinoCore";
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     /*
       AUTENTICAÇÃO
 
-      O usuário NÃO é mais confiado através
+      O usuário NÃO é confiado através
       do userId enviado pelo navegador.
 
       A API usa o token da sessão do Supabase.
@@ -112,12 +112,7 @@ export async function POST(request: Request) {
       );
     }
 
-    /*
-      ID REAL DO USUÁRIO AUTENTICADO
-    */
-
     const userId = user.id;
-
     const mentor = isMentor(userId);
 
     console.log(
@@ -136,58 +131,70 @@ export async function POST(request: Request) {
     );
 
     /*
-      CONTROLE DE PLANO
+      CONTROLE DE CRÉDITOS
 
       Mentor:
       - acesso vitalício
       - mensagens ilimitadas
-      - não consome uso
-      - não depende de créditos
+      - não consome créditos
 
       Clientes:
-      - continuam usando normalmente
-        os limites dos seus planos.
+      - precisam possuir pelo menos 1 crédito
+      - consomem 1 crédito por mensagem
     */
 
     if (!mentor) {
-      const plan =
-        await getUserPlanServer(userId);
+      const creditCheck =
+        await checkMessageLimit(userId);
 
       console.log(
-        "PLANO DO USUÁRIO:",
-        plan
+        "CRÉDITOS DISPONÍVEIS:",
+        creditCheck.credits
       );
 
-      if (plan) {
-        const limit =
-          plan.messages_limit;
-
-        if (
-          limit !== null &&
-          limit > 0
-        ) {
-          const usage =
-            await checkMessageLimit(
-              userId,
-              limit
-            );
-
-          if (!usage.allowed) {
-            return NextResponse.json({
-              reply:
-                "Você atingiu o limite do plano " +
-                plan.plan_name +
-                ".\n\n" +
-                "Mensagens usadas:\n" +
-                usage.used +
-                "/" +
-                limit +
-                "\n\n" +
-                "Faça upgrade do seu plano para continuar usando o ClaudinoIA.",
-            });
+      if (!creditCheck.allowed) {
+        return NextResponse.json(
+          {
+            reply:
+              "Você não possui créditos suficientes para continuar usando o ClaudinoIA.\n\n" +
+              "Adicione créditos à sua conta para continuar.",
+            credits: 0,
+          },
+          {
+            status: 402,
           }
-        }
+        );
       }
+
+      /*
+        RESERVA/CONSUMO DO CRÉDITO
+
+        O crédito é descontado ANTES da chamada
+        para a inteligência artificial.
+      */
+
+      const consumed =
+        await addMessageUsage(userId);
+
+      if (!consumed.allowed) {
+        return NextResponse.json(
+          {
+            reply:
+              "Você não possui créditos suficientes para continuar usando o ClaudinoIA.\n\n" +
+              "Adicione créditos à sua conta para continuar.",
+            credits:
+              consumed.credits,
+          },
+          {
+            status: 402,
+          }
+        );
+      }
+
+      console.log(
+        "CRÉDITO CONSUMIDO. RESTANTE:",
+        consumed.credits
+      );
     }
 
     /*
@@ -204,12 +211,6 @@ export async function POST(request: Request) {
         );
 
       if (confirmed.success) {
-        if (!mentor) {
-          await addMessageUsage(
-            userId
-          );
-        }
-
         return NextResponse.json({
           reply:
             "Pronto! Atualizei sua memória.\n\n" +
@@ -308,12 +309,6 @@ export async function POST(request: Request) {
           correctionText
         );
 
-        if (!mentor) {
-          await addMessageUsage(
-            userId
-          );
-        }
-
         return NextResponse.json({
           reply:
             "Entendido. Corrigi minha memória: MANCEBO não deve ser tratado como ferramenta. Vou considerar essa correção nas próximas conversas.",
@@ -380,24 +375,6 @@ export async function POST(request: Request) {
         history,
         memoryContext,
       });
-
-    /*
-      CONSUMO DE USO
-
-      Mentor nunca consome uso.
-
-      Clientes continuam consumindo
-      normalmente.
-    */
-
-    if (
-      userId &&
-      !mentor
-    ) {
-      await addMessageUsage(
-        userId
-      );
-    }
 
     /*
       ATUALIZA CONVERSA
