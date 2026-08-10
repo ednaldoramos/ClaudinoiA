@@ -1,80 +1,68 @@
 import { supabaseServer } from "@/lib/supabaseServer";
 
-
 export async function checkMessageLimit(
   userId: string,
-  limit: number
+  limit?: number | null
 ) {
-
-  const month =
-    new Date()
-      .toISOString()
-      .slice(0, 7);
-
-
-
-  const { data, error } =
-    await supabaseServer
-      .from("message_usage")
-      .select("used_messages")
-      .eq(
-        "user_id",
-        userId
-      )
-      .eq(
-        "month",
-        month
-      )
-      .maybeSingle();
-
-
+  const { data, error } = await supabaseServer
+    .from("client_credits")
+    .select("credits")
+    .eq("user_id", userId)
+    .maybeSingle();
 
   if (error) {
     throw error;
   }
 
-
-
-  const used =
-    data?.used_messages ?? 0;
-
-
+  const credits = data?.credits ?? 0;
 
   return {
-    allowed: used < limit,
-    used,
-    remaining:
-      Math.max(
-        limit - used,
-        0
-      ),
+    allowed: credits > 0,
+    used: 0,
+    remaining: credits,
+    credits,
   };
-
 }
 
+export async function addMessageUsage(userId: string) {
+  const { data: current, error: readError } =
+    await supabaseServer
+      .from("client_credits")
+      .select("credits")
+      .eq("user_id", userId)
+      .maybeSingle();
 
+  if (readError) {
+    throw readError;
+  }
 
+  const currentCredits = current?.credits ?? 0;
 
-export async function addMessageUsage(
-  userId: string
-) {
+  if (currentCredits <= 0) {
+    return {
+      credits: 0,
+      allowed: false,
+    };
+  }
 
-  const { data, error } =
-    await supabaseServer.rpc(
-      "increment_message_usage",
-      {
-        uid: userId,
-      }
-    );
+  const newCredits = currentCredits - 1;
 
-
+  const { data, error } = await supabaseServer
+    .from("client_credits")
+    .update({
+      credits: newCredits,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+    .select("credits")
+    .single();
 
   if (error) {
     throw error;
   }
 
-
-
-  return data;
-
+  return {
+    credits: data.credits,
+    allowed: true,
+  };
 }
