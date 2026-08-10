@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 
@@ -8,7 +8,7 @@ import { getUserPlan } from "@/lib/plans";
 type UserPlan = {
   plan_name: string;
   price: number;
-  messages_limit: number;
+  messages_limit: number | null;
   features: string[];
 };
 
@@ -19,7 +19,8 @@ export default function ProfileCard() {
   const [email, setEmail] = useState("");
   const [credits, setCredits] = useState(0);
 
-  const [plan, setPlan] = useState<UserPlan | null>(null);
+  const [plan, setPlan] =
+    useState<UserPlan | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -42,12 +43,14 @@ export default function ProfileCard() {
             "Usuário"
         );
 
-        const { data: creditData, error: creditError } =
-          await supabase
-            .from("client_credits")
-            .select("credits")
-            .eq("user_id", user.id)
-            .maybeSingle();
+        const {
+          data: creditData,
+          error: creditError,
+        } = await supabase
+          .from("client_credits")
+          .select("credits")
+          .eq("user_id", user.id)
+          .maybeSingle();
 
         if (creditError) {
           console.error(
@@ -55,10 +58,13 @@ export default function ProfileCard() {
             creditError
           );
         } else {
-          setCredits(creditData?.credits ?? 0);
+          setCredits(
+            creditData?.credits ?? 0
+          );
         }
 
-        const userPlan = await getUserPlan();
+        const userPlan =
+          await getUserPlan();
 
         setPlan(userPlan);
       } catch (error) {
@@ -76,21 +82,24 @@ export default function ProfileCard() {
 
   if (loading) {
     return (
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
-        <p className="text-zinc-400">
-          Carregando perfil...
-        </p>
+      <div className="text-zinc-400">
+        Carregando perfil...
       </div>
     );
   }
 
-  return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+  const isMentor =
+    plan?.plan_name === "Mentor";
 
+  return (
+    <div>
       {/* PERFIL */}
+
       <div className="flex items-center gap-4">
         <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-2xl font-bold">
-          {name.charAt(0).toUpperCase()}
+          {name
+            .charAt(0)
+            .toUpperCase()}
         </div>
 
         <div>
@@ -105,20 +114,24 @@ export default function ProfileCard() {
       </div>
 
       {/* INFORMAÇÕES DA CONTA */}
+
       <div className="grid md:grid-cols-3 gap-6 mt-8">
 
         {/* PLANO */}
+
         <div className="bg-zinc-800 rounded-xl p-5">
           <h3 className="text-zinc-400 text-sm">
             Plano Atual
           </h3>
 
           <p className="text-2xl font-bold text-green-400 mt-2">
-            {plan?.plan_name ?? "Sem plano"}
+            {plan?.plan_name ??
+              "Sem plano"}
           </p>
         </div>
 
         {/* VALOR */}
+
         <div className="bg-zinc-800 rounded-xl p-5">
           <h3 className="text-zinc-400 text-sm">
             Valor
@@ -129,20 +142,24 @@ export default function ProfileCard() {
           </p>
         </div>
 
-        {/* CRÉDITOS */}
+        {/* LIMITE */}
+
         <div className="bg-zinc-800 rounded-xl p-5">
           <h3 className="text-zinc-400 text-sm">
             Limite de Mensagens
           </h3>
 
           <p className="text-2xl font-bold mt-2 text-white">
-            {credits}
+            {isMentor
+              ? "Ilimitado"
+              : credits}
           </p>
         </div>
 
       </div>
 
       {/* RECURSOS */}
+
       <div className="mt-8">
         <h3 className="text-xl font-bold mb-4 text-white">
           Recursos Liberados
@@ -169,7 +186,6 @@ export default function ProfileCard() {
 
         </div>
       </div>
-
     </div>
   );
 }
