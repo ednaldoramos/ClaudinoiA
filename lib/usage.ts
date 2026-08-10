@@ -25,26 +25,16 @@ export async function checkMessageLimit(
 }
 
 export async function addMessageUsage(userId: string) {
-  const { data, error } = await supabaseServer
-    .rpc("consume_client_credit", {
+  const { data, error } = await supabaseServer.rpc(
+    "consume_client_credit",
+    {
       p_user_id: userId,
-    });
+    }
+  );
 
   if (error) {
-    console.error(
-      "ERRO AO CONSUMIR CRÉDITO:",
-      error
-    );
-
     throw error;
   }
 
-  const result = Array.isArray(data)
-    ? data[0]
-    : data;
-
-  return {
-    credits: result?.credits ?? 0,
-    allowed: result?.allowed ?? false,
-  };
+  return data;
 }
