@@ -4,36 +4,45 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-export default function LoginPage() {
+export default function ForgotPasswordPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
+  const [sucesso, setSucesso] = useState("");
   const [carregando, setCarregando] = useState(false);
 
-  async function entrar(event: FormEvent) {
+  async function enviarRecuperacao(event: FormEvent) {
     event.preventDefault();
 
     setErro("");
+    setSucesso("");
     setCarregando(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: senha,
-      });
+      const redirectUrl = `${window.location.origin}/reset-password`;
+
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        email.trim(),
+        {
+          redirectTo: redirectUrl,
+        }
+      );
 
       if (error) {
         setErro(error.message);
         return;
       }
 
-      router.push("/dashboard");
-      router.refresh();
+      setSucesso(
+        "Enviamos um link de recuperação para seu email. Verifique também a pasta de spam."
+      );
     } catch (error) {
-      console.error("Erro ao entrar:", error);
-      setErro("Não foi possível entrar. Tente novamente.");
+      console.error("Erro na recuperação:", error);
+
+      setErro(
+        "Não foi possível enviar o email de recuperação. Tente novamente."
+      );
     } finally {
       setCarregando(false);
     }
@@ -44,14 +53,17 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="bg-slate-900/80 border border-white/10 rounded-2xl p-8 shadow-2xl">
           <h1 className="text-3xl font-bold text-center">
-            Entrar no ClaudinoIA
+            Recuperar senha
           </h1>
 
           <p className="text-slate-400 text-center mt-3 mb-8">
-            Acesse sua conta para continuar.
+            Informe seu email para receber um link e criar uma nova senha.
           </p>
 
-          <form onSubmit={entrar} className="space-y-5">
+          <form
+            onSubmit={enviarRecuperacao}
+            className="space-y-5"
+          >
             <div>
               <label
                 htmlFor="email"
@@ -72,39 +84,19 @@ export default function LoginPage() {
               />
             </div>
 
-            <div>
-              <label
-                htmlFor="senha"
-                className="text-sm text-slate-300"
-              >
-                Senha
-              </label>
-
-              <input
-                id="senha"
-                type="password"
-                value={senha}
-                onChange={(event) => setSenha(event.target.value)}
-                placeholder="Digite sua senha"
-                required
-                autoComplete="current-password"
-                className="w-full mt-2 px-4 py-3 rounded-xl bg-black/40 border border-white/10 outline-none focus:border-blue-500"
-              />
-
-              <div className="text-right mt-2">
-                <button
-                  type="button"
-                  onClick={() => router.push("/forgot-password")}
-                  className="text-sm text-blue-400 hover:text-blue-300"
-                >
-                  Esqueci minha senha
-                </button>
-              </div>
-            </div>
-
             {erro && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
-                <p className="text-red-400 text-sm">{erro}</p>
+                <p className="text-red-400 text-sm">
+                  {erro}
+                </p>
+              </div>
+            )}
+
+            {sucesso && (
+              <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3">
+                <p className="text-green-400 text-sm">
+                  {sucesso}
+                </p>
               </div>
             )}
 
@@ -113,21 +105,19 @@ export default function LoginPage() {
               disabled={carregando}
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 py-3 rounded-xl font-semibold transition"
             >
-              {carregando ? "Entrando..." : "Entrar"}
+              {carregando
+                ? "Enviando..."
+                : "Enviar link de recuperação"}
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-slate-400 text-sm">
-              Ainda não possui uma conta?
-            </p>
-
             <button
               type="button"
-              onClick={() => router.push("/register")}
-              className="mt-2 text-blue-400 hover:text-blue-300 font-semibold"
+              onClick={() => router.push("/login")}
+              className="text-blue-400 hover:text-blue-300 font-semibold"
             >
-              Criar conta grátis
+              Voltar para entrar
             </button>
           </div>
         </div>
