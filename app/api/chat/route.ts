@@ -12,7 +12,9 @@ import {
 const MENTOR_USER_ID =
   "004fed89-55e8-4bb6-bbde-2a3b23b5cd59";
 
-function isMentor(userId: string | null | undefined) {
+function isMentor(
+  userId: string | null | undefined
+) {
   return userId === MENTOR_USER_ID;
 }
 
@@ -45,15 +47,12 @@ export async function POST(request: Request) {
 
     const message = body.message;
     const conversationId = body.conversationId;
-    const userId = body.userId;
-
-    console.log("USER ID RECEBIDO NA API:", userId);
-    console.log("USUÁRIO É MENTOR:", isMentor(userId));
 
     if (!message || !conversationId) {
       return NextResponse.json(
         {
-          reply: "Mensagem ou conversa não informada.",
+          reply:
+            "Mensagem ou conversa não informada.",
         },
         {
           status: 400,
@@ -62,26 +61,116 @@ export async function POST(request: Request) {
     }
 
     /*
-      CONTROLE DE PLANO
+      AUTENTICAÇÃO
 
-      O mentor não passa pelo controle de limite.
-      Clientes continuam usando normalmente seus planos.
+      O usuário NÃO é mais confiado através
+      do userId enviado pelo navegador.
+
+      A API usa o token da sessão do Supabase.
     */
 
-    if (userId) {
-      const plan = await getUserPlanServer(userId);
-      const mentor = isMentor(userId);
+    const authorization =
+      request.headers.get("authorization");
 
-      console.log("PLANO DO USUÁRIO:", plan);
+    if (!authorization) {
+      return NextResponse.json(
+        {
+          reply:
+            "Sessão não encontrada. Faça login novamente.",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
 
-      if (!mentor && plan) {
-        const limit = plan.messages_limit;
+    const token = authorization.replace(
+      /^Bearer\s+/i,
+      ""
+    );
 
-        if (limit > 0) {
-          const usage = await checkMessageLimit(
-            userId,
-            limit
-          );
+    const {
+      data: { user },
+      error: userError,
+    } =
+      await supabaseServer.auth.getUser(token);
+
+    if (userError || !user) {
+      console.error(
+        "Erro ao autenticar usuário:",
+        userError
+      );
+
+      return NextResponse.json(
+        {
+          reply:
+            "Sessão inválida. Faça login novamente.",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+
+    /*
+      ID REAL DO USUÁRIO AUTENTICADO
+    */
+
+    const userId = user.id;
+
+    const mentor = isMentor(userId);
+
+    console.log(
+      "USUÁRIO AUTENTICADO:",
+      user.email
+    );
+
+    console.log(
+      "USER ID AUTENTICADO:",
+      userId
+    );
+
+    console.log(
+      "USUÁRIO É MENTOR:",
+      mentor
+    );
+
+    /*
+      CONTROLE DE PLANO
+
+      Mentor:
+      - acesso vitalício
+      - mensagens ilimitadas
+      - não consome uso
+      - não depende de créditos
+
+      Clientes:
+      - continuam usando normalmente
+        os limites dos seus planos.
+    */
+
+    if (!mentor) {
+      const plan =
+        await getUserPlanServer(userId);
+
+      console.log(
+        "PLANO DO USUÁRIO:",
+        plan
+      );
+
+      if (plan) {
+        const limit =
+          plan.messages_limit;
+
+        if (
+          limit !== null &&
+          limit > 0
+        ) {
+          const usage =
+            await checkMessageLimit(
+              userId,
+              limit
+            );
 
           if (!usage.allowed) {
             return NextResponse.json({
@@ -105,13 +194,20 @@ export async function POST(request: Request) {
       CONFIRMAÇÃO DE MEMÓRIA
     */
 
-    if (userId && isConfirmation(message)) {
+    if (
+      userId &&
+      isConfirmation(message)
+    ) {
       const confirmed =
-        await core.security.confirmMemoryUpdate(userId);
+        await core.security.confirmMemoryUpdate(
+          userId
+        );
 
       if (confirmed.success) {
-        if (!isMentor(userId)) {
-          await addMessageUsage(userId);
+        if (!mentor) {
+          await addMessageUsage(
+            userId
+          );
         }
 
         return NextResponse.json({
@@ -134,7 +230,10 @@ export async function POST(request: Request) {
     } = await supabaseServer
       .from("messages")
       .select("role, content")
-      .eq("conversation_id", conversationId)
+      .eq(
+        "conversation_id",
+        conversationId
+      )
       .order("created_at", {
         ascending: true,
       });
@@ -151,16 +250,20 @@ export async function POST(request: Request) {
         BUSCA MEMÓRIAS ATUAIS
       */
 
-      memories = await core.memory.getContext(userId);
+      memories =
+        await core.memory.getContext(
+          userId
+        );
 
       /*
         APRENDIZADO
       */
 
-      memoryResult = await core.memory.learn(
-        userId,
-        message
-      );
+      memoryResult =
+        await core.memory.learn(
+          userId,
+          message
+        );
 
       /*
         CORREÇÃO EXPLÍCITA
@@ -176,18 +279,28 @@ export async function POST(request: Request) {
         } = await supabaseServer
           .from("memories")
           .select("*")
-          .eq("user_id", userId)
-          .eq("chave", "ferramenta")
+          .eq(
+            "user_id",
+            userId
+          )
+          .eq(
+            "chave",
+            "ferramenta"
+          )
           .maybeSingle();
 
         if (ferramentaAtual) {
           await supabaseServer
             .from("memories")
             .delete()
-            .eq("id", ferramentaAtual.id);
+            .eq(
+              "id",
+              ferramentaAtual.id
+            );
         }
 
-        const correctionText = message.trim();
+        const correctionText =
+          message.trim();
 
         await core.memory.saveMemory(
           userId,
@@ -195,8 +308,10 @@ export async function POST(request: Request) {
           correctionText
         );
 
-        if (!isMentor(userId)) {
-          await addMessageUsage(userId);
+        if (!mentor) {
+          await addMessageUsage(
+            userId
+          );
         }
 
         return NextResponse.json({
@@ -216,7 +331,8 @@ export async function POST(request: Request) {
         const memoriaAtual =
           memories.find(
             (item) =>
-              item.chave === memoryResult.chave
+              item.chave ===
+              memoryResult.chave
           );
 
         await core.security.createMemoryConfirmation(
@@ -229,7 +345,8 @@ export async function POST(request: Request) {
           reply:
             "Ednaldo, encontrei uma alteração na sua memória.\n\n" +
             "Atualmente tenho registrado:\n\n" +
-            (memoriaAtual?.valor || "não informado") +
+            (memoriaAtual?.valor ||
+              "não informado") +
             "\n\n" +
             "Você informou:\n\n" +
             memoryResult.valor +
@@ -243,37 +360,43 @@ export async function POST(request: Request) {
       CONTEXTO DE MEMÓRIA
     */
 
-    const memoryContext = memories
-      .map(
-        (memory) =>
-          `${memory.chave}: ${memory.valor}`
-      )
-      .join("\n");
+    const memoryContext =
+      memories
+        .map(
+          (memory) =>
+            `${memory.chave}: ${memory.valor}`
+        )
+        .join("\n");
 
     /*
       IA
     */
 
-    const aiResponse = await core.ai.chat({
-      userId,
-      conversationId,
-      message,
-      history,
-      memoryContext,
-    });
+    const aiResponse =
+      await core.ai.chat({
+        userId,
+        conversationId,
+        message,
+        history,
+        memoryContext,
+      });
 
     /*
-      CONSUMO DE CRÉDITO
+      CONSUMO DE USO
 
-      Cliente:
-      consome 1 crédito.
+      Mentor nunca consome uso.
 
-      Mentor:
-      não consome crédito.
+      Clientes continuam consumindo
+      normalmente.
     */
 
-    if (userId && !isMentor(userId)) {
-      await addMessageUsage(userId);
+    if (
+      userId &&
+      !mentor
+    ) {
+      await addMessageUsage(
+        userId
+      );
     }
 
     /*
@@ -283,19 +406,29 @@ export async function POST(request: Request) {
     await supabaseServer
       .from("conversations")
       .update({
-        updated_at: new Date().toISOString(),
+        updated_at:
+          new Date().toISOString(),
       })
-      .eq("id", conversationId);
+      .eq(
+        "id",
+        conversationId
+      );
 
     return NextResponse.json({
       reply: aiResponse.reply,
     });
   } catch (error: any) {
-    console.error("Erro ClaudinoIA:", error);
+    console.error(
+      "Erro ClaudinoIA:",
+      error
+    );
 
     return NextResponse.json(
       {
-        reply: "Erro da IA: " + error.message,
+        reply:
+          "Erro da IA: " +
+          (error?.message ||
+            "Erro desconhecido."),
       },
       {
         status: 500,

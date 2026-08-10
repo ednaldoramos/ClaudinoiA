@@ -25,7 +25,6 @@ export default function ChatBox({
 }: ChatBoxProps) {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function loadMessages() {
@@ -44,20 +43,11 @@ export default function ChatBox({
   }
 
   useEffect(() => {
-    async function loadUser() {
-      const { data } = await supabase.auth.getUser();
-
-      if (data.user) {
-        setUserId(data.user.id);
-      }
-    }
-
-    loadUser();
     loadMessages();
   }, [conversationId]);
 
   async function sendMessage() {
-    if (!message.trim()) return;
+    if (!message.trim() || loading) return;
 
     const userText = message;
 
@@ -73,6 +63,17 @@ export default function ChatBox({
     setLoading(true);
 
     try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session) {
+        throw new Error(
+          "Sua sessão expirou. Faça login novamente."
+        );
+      }
+
       await saveMessage(
         userText,
         conversationId,
@@ -83,11 +84,11 @@ export default function ChatBox({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           message: userText,
           conversationId,
-          userId,
         }),
       });
 
@@ -95,7 +96,7 @@ export default function ChatBox({
 
       if (!response.ok) {
         throw new Error(
-          data.reply || "Erro na API"
+          data.reply || data.error || "Erro na API."
         );
       }
 
@@ -124,7 +125,7 @@ export default function ChatBox({
           role: "assistant",
           content:
             "Erro ao conectar com o ClaudinoIA: " +
-            error.message,
+            (error?.message || "Erro desconhecido."),
         },
       ]);
     } finally {
@@ -133,14 +134,12 @@ export default function ChatBox({
   }
 
   return (
-    <div className="bg-white text-zinc-900 border border-zinc-200 rounded-2xl p-6 shadow-sm">
-
+    <div>
       <h2 className="text-2xl font-bold mb-5 text-zinc-900">
         🤖 Bate-papo ClaudinoIA
       </h2>
 
       <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 min-h-[350px] mb-5">
-
         {messages.length === 0 && (
           <p className="text-zinc-500">
             Comece uma conversa...
@@ -171,7 +170,6 @@ export default function ChatBox({
             🤖 ClaudinoIA pensando...
           </p>
         )}
-
       </div>
 
       <Textarea
@@ -192,7 +190,6 @@ export default function ChatBox({
           ? "Enviando..."
           : "Enviar mensagem"}
       </Button>
-
     </div>
   );
 }
