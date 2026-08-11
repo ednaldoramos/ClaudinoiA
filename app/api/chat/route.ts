@@ -34,29 +34,6 @@ function isMemoryCorrection(message: string) {
   );
 }
 
-async function consumeCreditOrBlock(userId: string) {
-  const consumed = await addMessageUsage(userId);
-
-  console.log("RESULTADO DO CONSUMO:", consumed);
-
-  if (!consumed.allowed) {
-    return {
-      allowed: false,
-      response: NextResponse.json({
-        reply:
-          "Seus créditos acabaram.\n\n" +
-          "Você não possui créditos suficientes para continuar usando o ClaudinoIA.\n\n" +
-          "Adicione créditos para continuar.",
-      }),
-    };
-  }
-
-  return {
-    allowed: true,
-    response: undefined,
-  };
-}
-
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -118,30 +95,20 @@ export async function POST(request: Request) {
     const userId = user.id;
     const mentor = isMentor(userId);
 
-    console.log(
-      "USUÁRIO AUTENTICADO:",
-      user.email
-    );
-
-    console.log(
-      "USER ID AUTENTICADO:",
-      userId
-    );
-
-    console.log(
-      "USUÁRIO É MENTOR:",
-      mentor
-    );
+    console.log("USUÁRIO AUTENTICADO:", user.email);
+    console.log("USER ID AUTENTICADO:", userId);
+    console.log("USUÁRIO É MENTOR:", mentor);
 
     /*
-      CONTROLE INICIAL DE CRÉDITOS
+      CONTROLE DE CRÉDITOS
 
       Mentor:
       - ilimitado
       - não consome créditos
 
-      Usuários comuns:
-      - precisam possuir pelo menos 1 crédito
+      Usuário comum:
+      - precisa ter pelo menos 1 crédito
+      - consome exatamente 1 crédito
     */
 
     if (!mentor) {
@@ -149,7 +116,7 @@ export async function POST(request: Request) {
         await checkMessageLimit(userId);
 
       console.log(
-        "CRÉDITOS DISPONÍVEIS:",
+        "CRÉDITOS ANTES DO CONSUMO:",
         creditStatus.credits
       );
 
@@ -161,6 +128,32 @@ export async function POST(request: Request) {
             "Adicione créditos para continuar.",
         });
       }
+
+      const consumed =
+        await addMessageUsage(userId);
+
+      console.log(
+        "RESULTADO DO CONSUMO:",
+        consumed
+      );
+
+      if (!consumed?.allowed) {
+        return NextResponse.json({
+          reply:
+            "Seus créditos acabaram.\n\n" +
+            "Você não possui créditos suficientes para continuar usando o ClaudinoIA.\n\n" +
+            "Adicione créditos para continuar.",
+        });
+      }
+
+      console.log(
+        "CRÉDITO CONSUMIDO COM SUCESSO."
+      );
+
+      console.log(
+        "CRÉDITOS RESTANTES:",
+        consumed.credits
+      );
     }
 
     /*
@@ -174,18 +167,6 @@ export async function POST(request: Request) {
         );
 
       if (confirmed.success) {
-        if (!mentor) {
-          const consumed =
-            await consumeCreditOrBlock(userId);
-
-          if (
-            !consumed.allowed &&
-            consumed.response
-          ) {
-            return consumed.response;
-          }
-        }
-
         return NextResponse.json({
           reply:
             "Pronto! Atualizei sua memória.\n\n" +
@@ -218,17 +199,14 @@ export async function POST(request: Request) {
       throw historyError;
     }
 
-    let memories: any[] = [];
-    let memoryResult: any = null;
-
     /*
       MEMÓRIA
     */
 
-    memories =
+    const memories =
       await core.memory.getContext(userId);
 
-    memoryResult =
+    const memoryResult =
       await core.memory.learn(
         userId,
         message
@@ -271,18 +249,6 @@ export async function POST(request: Request) {
         correctionText
       );
 
-      if (!mentor) {
-        const consumed =
-          await consumeCreditOrBlock(userId);
-
-        if (
-          !consumed.allowed &&
-          consumed.response
-        ) {
-          return consumed.response;
-        }
-      }
-
       return NextResponse.json({
         reply:
           "Entendido. Corrigi minha memória: MANCEBO não deve ser tratado como ferramenta. Vou considerar essa correção nas próximas conversas.",
@@ -291,9 +257,6 @@ export async function POST(request: Request) {
 
     /*
       OUTRAS ALTERAÇÕES DE MEMÓRIA
-
-      O crédito só é consumido quando
-      a alteração é efetivamente confirmada.
     */
 
     if (
@@ -351,30 +314,6 @@ export async function POST(request: Request) {
         history: history || [],
         memoryContext,
       });
-
-    /*
-      CONSUMO DE CRÉDITO
-
-      Mentor nunca consome créditos.
-      Usuário comum consome exatamente 1
-      crédito após o processamento da IA.
-    */
-
-    if (!mentor) {
-      const consumed =
-        await consumeCreditOrBlock(userId);
-
-      if (
-        !consumed.allowed &&
-        consumed.response
-      ) {
-        return consumed.response;
-      }
-
-      console.log(
-        "CRÉDITO CONSUMIDO COM SUCESSO."
-      );
-    }
 
     /*
       ATUALIZA CONVERSA
