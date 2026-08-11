@@ -1,3 +1,4 @@
+﻿```ts
 import { NextResponse } from "next/server";
 
 import { supabaseServer } from "@/lib/supabaseServer";
@@ -34,6 +35,29 @@ function isMemoryCorrection(message: string) {
   );
 }
 
+async function consumeCreditOrBlock(userId: string) {
+  const consumed = await addMessageUsage(userId);
+
+  console.log("RESULTADO DO CONSUMO:", consumed);
+
+  if (!consumed.allowed) {
+    return {
+      allowed: false,
+      response: NextResponse.json({
+        reply:
+          "Seus créditos acabaram.\n\n" +
+          "Você não possui créditos suficientes para continuar usando o ClaudinoIA.\n\n" +
+          "Adicione créditos para continuar.",
+      }),
+    };
+  }
+
+  return {
+    allowed: true,
+    response: null,
+  };
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -54,8 +78,7 @@ export async function POST(request: Request) {
       AUTENTICAÇÃO
     */
 
-    const authorization =
-      request.headers.get("authorization");
+    const authorization = request.headers.get("authorization");
 
     if (!authorization) {
       return NextResponse.json(
@@ -95,48 +118,35 @@ export async function POST(request: Request) {
     const userId = user.id;
     const mentor = isMentor(userId);
 
-    console.log(
-      "USUÁRIO AUTENTICADO:",
-      user.email
-    );
-
-    console.log(
-      "USER ID AUTENTICADO:",
-      userId
-    );
-
-    console.log(
-      "USUÁRIO É MENTOR:",
-      mentor
-    );
+    console.log("USUÁRIO AUTENTICADO:", user.email);
+    console.log("USER ID AUTENTICADO:", userId);
+    console.log("USUÁRIO É MENTOR:", mentor);
 
     /*
-      CONTROLE DE CRÉDITOS
+      CONTROLE INICIAL DE CRÉDITOS
 
       Mentor:
       - ilimitado
       - não consome créditos
 
-      Clientes:
+      Usuários comuns:
       - precisam possuir pelo menos 1 crédito
-      - cada mensagem consome 1 crédito
     */
 
     if (!mentor) {
-      const creditStatus =
-        await checkMessageLimit(userId);
+      const creditStatus = await checkMessageLimit(userId);
 
       console.log(
-        "CRÉDITOS DO USUÁRIO:",
+        "CRÉDITOS DISPONÍVEIS:",
         creditStatus.credits
       );
 
       if (!creditStatus.allowed) {
         return NextResponse.json({
           reply:
-            "Você não possui créditos suficientes para enviar esta mensagem.\n\n" +
-            "Créditos disponíveis: 0\n\n" +
-            "Adicione créditos para continuar usando o ClaudinoIA.",
+            "Seus créditos acabaram.\n\n" +
+            "Você não possui créditos suficientes para continuar usando o ClaudinoIA.\n\n" +
+            "Adicione créditos para continuar.",
         });
       }
     }
@@ -147,13 +157,16 @@ export async function POST(request: Request) {
 
     if (isConfirmation(message)) {
       const confirmed =
-        await core.security.confirmMemoryUpdate(
-          userId
-        );
+        await core.security.confirmMemoryUpdate(userId);
 
       if (confirmed.success) {
         if (!mentor) {
-          await addMessageUsage(userId);
+          const consumed =
+            await consumeCreditOrBlock(userId);
+
+          if (!consumed.allowed) {
+            return consumed.response;
+          }
         }
 
         return NextResponse.json({
@@ -176,10 +189,7 @@ export async function POST(request: Request) {
     } = await supabaseServer
       .from("messages")
       .select("role, content")
-      .eq(
-        "conversation_id",
-        conversationId
-      )
+      .eq("conversation_id", conversationId)
       .order("created_at", {
         ascending: true,
       });
@@ -195,17 +205,15 @@ export async function POST(request: Request) {
       MEMÓRIA
     */
 
-    memories =
-      await core.memory.getContext(userId);
+    memories = await core.memory.getContext(userId);
 
-    memoryResult =
-      await core.memory.learn(
-        userId,
-        message
-      );
+    memoryResult = await core.memory.learn(
+      userId,
+      message
+    );
 
     /*
-      CORREÇÃO EXPLÍCITA
+      CORREÇÃO EXPLÍCITA DE MEMÓRIA
     */
 
     if (
@@ -226,14 +234,10 @@ export async function POST(request: Request) {
         await supabaseServer
           .from("memories")
           .delete()
-          .eq(
-            "id",
-            ferramentaAtual.id
-          );
+          .eq("id", ferramentaAtual.id);
       }
 
-      const correctionText =
-        message.trim();
+      const correctionText = message.trim();
 
       await core.memory.saveMemory(
         userId,
@@ -242,7 +246,12 @@ export async function POST(request: Request) {
       );
 
       if (!mentor) {
-        await addMessageUsage(userId);
+        const consumed =
+          await consumeCreditOrBlock(userId);
+
+        if (!consumed.allowed) {
+          return consumed.response;
+        }
       }
 
       return NextResponse.json({
@@ -253,18 +262,20 @@ export async function POST(request: Request) {
 
     /*
       OUTRAS ALTERAÇÕES DE MEMÓRIA
+
+      Neste caso o sistema apenas pede confirmação.
+      O crédito será consumido quando a alteração
+      for efetivamente confirmada.
     */
 
     if (
       memoryResult &&
       memoryResult.protected
     ) {
-      const memoriaAtual =
-        memories.find(
-          (item) =>
-            item.chave ===
-            memoryResult.chave
-        );
+      const memoriaAtual = memories.find(
+        (item) =>
+          item.chave === memoryResult.chave
+      );
 
       await core.security.createMemoryConfirmation(
         userId,
@@ -290,43 +301,49 @@ export async function POST(request: Request) {
       CONTEXTO DE MEMÓRIA
     */
 
-    const memoryContext =
-      memories
-        .map(
-          (memory) =>
-            `${memory.chave}: ${memory.valor}`
-        )
-        .join("\n");
+    const memoryContext = memories
+      .map(
+        (memory) =>
+          `${memory.chave}: ${memory.valor}`
+      )
+      .join("\n");
 
     /*
       IA
     */
 
-    const aiResponse =
-      await core.ai.chat({
-        userId,
-        conversationId,
-        message,
-        history: history || [],
-        memoryContext,
-      });
+    const aiResponse = await core.ai.chat({
+      userId,
+      conversationId,
+      message,
+      history: history || [],
+      memoryContext,
+    });
 
     /*
       CONSUMO DE CRÉDITO
 
-      O crédito é consumido somente
-      depois que a IA processa a mensagem.
+      O banco decide atomicamente se existe
+      crédito disponível.
 
-      Mentor nunca consome.
+      Mentor nunca consome créditos.
     */
 
     if (!mentor) {
       const consumed =
-        await addMessageUsage(userId);
+        await consumeCreditOrBlock(userId);
+
+      if (!consumed.allowed) {
+        return consumed.response;
+      }
 
       console.log(
-        "CRÉDITO CONSUMIDO:",
-        consumed
+        "CRÉDITO CONSUMIDO COM SUCESSO."
+      );
+
+      console.log(
+        "CRÉDITOS RESTANTES:",
+        consumed.response
       );
     }
 
@@ -340,10 +357,7 @@ export async function POST(request: Request) {
         updated_at:
           new Date().toISOString(),
       })
-      .eq(
-        "id",
-        conversationId
-      );
+      .eq("id", conversationId);
 
     return NextResponse.json({
       reply: aiResponse.reply,
@@ -365,3 +379,4 @@ export async function POST(request: Request) {
     );
   }
 }
+```
