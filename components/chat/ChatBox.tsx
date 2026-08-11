@@ -133,6 +133,15 @@ export default function ChatBox({
     }
   }
 
+  function handleKeyDown(
+    event: React.KeyboardEvent<HTMLTextAreaElement>
+  ) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      void sendMessage();
+    }
+  }
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-5 text-zinc-900">
@@ -177,6 +186,7 @@ export default function ChatBox({
         onChange={(e) =>
           setMessage(e.target.value)
         }
+        onKeyDown={handleKeyDown}
         placeholder="Digite sua mensagem..."
         className="mb-4 bg-white text-zinc-900 border-zinc-300 placeholder:text-zinc-400 focus:border-blue-500 focus:ring-blue-500"
       />
