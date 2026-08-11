@@ -1,4 +1,4 @@
-import { supabaseServer } from "@/lib/supabaseServer";
+﻿import { supabaseServer } from "@/lib/supabaseServer";
 
 const MENTOR_USER_ID =
   "004fed89-55e8-4bb6-bbde-2a3b23b5cd59";
@@ -63,15 +63,11 @@ export async function getUserPlanServer(
     return null;
   }
 
-  if (
-    !userPlan ||
-    !userPlan.plans
-  ) {
+  if (!userPlan || !userPlan.plans) {
     return null;
   }
 
-  const plan: any =
-    userPlan.plans;
+  const plan: any = userPlan.plans;
 
   return {
     plan_name: plan.name,

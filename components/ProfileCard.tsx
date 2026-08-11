@@ -93,8 +93,6 @@ export default function ProfileCard() {
 
   return (
     <div>
-      {/* PERFIL */}
-
       <div className="flex items-center gap-4">
         <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-2xl font-bold">
           {name
@@ -113,12 +111,7 @@ export default function ProfileCard() {
         </div>
       </div>
 
-      {/* INFORMAÇÕES DA CONTA */}
-
       <div className="grid md:grid-cols-3 gap-6 mt-8">
-
-        {/* PLANO */}
-
         <div className="bg-zinc-800 rounded-xl p-5">
           <h3 className="text-zinc-400 text-sm">
             Plano Atual
@@ -130,8 +123,6 @@ export default function ProfileCard() {
           </p>
         </div>
 
-        {/* VALOR */}
-
         <div className="bg-zinc-800 rounded-xl p-5">
           <h3 className="text-zinc-400 text-sm">
             Valor
@@ -141,8 +132,6 @@ export default function ProfileCard() {
             R$ {plan?.price ?? 0}
           </p>
         </div>
-
-        {/* LIMITE */}
 
         <div className="bg-zinc-800 rounded-xl p-5">
           <h3 className="text-zinc-400 text-sm">
@@ -155,10 +144,7 @@ export default function ProfileCard() {
               : credits}
           </p>
         </div>
-
       </div>
-
-      {/* RECURSOS */}
 
       <div className="mt-8">
         <h3 className="text-xl font-bold mb-4 text-white">
@@ -166,7 +152,6 @@ export default function ProfileCard() {
         </h3>
 
         <div className="space-y-3">
-
           {plan?.features?.map(
             (feature, index) => (
               <div
@@ -183,7 +168,6 @@ export default function ProfileCard() {
               Nenhum recurso adicional liberado.
             </div>
           )}
-
         </div>
       </div>
     </div>

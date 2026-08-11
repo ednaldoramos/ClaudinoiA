@@ -1,6 +1,7 @@
-import { supabase } from "@/lib/supabase";
+﻿import { supabase } from "@/lib/supabase";
 
-const MENTOR_USER_ID = "004fed89-55e8-4bb6-bbde-2a3b23b5cd59";
+const MENTOR_USER_ID =
+  "004fed89-55e8-4bb6-bbde-2a3b23b5cd59";
 
 export type UserPlan = {
   plan_name: string;
@@ -57,7 +58,8 @@ export async function getUserPlan(): Promise<UserPlan | null> {
   return {
     plan_name: data[0].plan_name,
     price: Number(data[0].price),
-    messages_limit: data[0].messages_limit ?? null,
+    messages_limit:
+      data[0].messages_limit ?? null,
     features: data[0].features ?? [],
   };
 }
