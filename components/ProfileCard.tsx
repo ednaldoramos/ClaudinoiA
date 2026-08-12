@@ -5,6 +5,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getUserPlan } from "@/lib/plans";
 
+const MENTOR_USER_ID =
+  "004fed89-55e8-4bb6-bbde-2a3b23b5cd59";
+
 type UserPlan = {
   plan_name: string;
   price: number;
@@ -14,13 +17,11 @@ type UserPlan = {
 
 export default function ProfileCard() {
   const [loading, setLoading] = useState(true);
-
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [credits, setCredits] = useState(0);
-
-  const [plan, setPlan] =
-    useState<UserPlan | null>(null);
+  const [isMentor, setIsMentor] = useState(false);
+  const [plan, setPlan] = useState<UserPlan | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -34,6 +35,9 @@ export default function ProfileCard() {
           return;
         }
 
+        const mentor = user.id === MENTOR_USER_ID;
+
+        setIsMentor(mentor);
         setEmail(user.email ?? "");
 
         setName(
@@ -43,30 +47,44 @@ export default function ProfileCard() {
             "Usuário"
         );
 
-        const {
-          data: creditData,
-          error: creditError,
-        } = await supabase
-          .from("client_credits")
-          .select("credits")
-          .eq("user_id", user.id)
-          .maybeSingle();
+        if (!mentor) {
+          const {
+            data: creditData,
+            error: creditError,
+          } = await supabase
+            .from("client_credits")
+            .select("credits")
+            .eq("user_id", user.id)
+            .maybeSingle();
 
-        if (creditError) {
-          console.error(
-            "Erro ao carregar créditos:",
-            creditError
-          );
-        } else {
-          setCredits(
-            creditData?.credits ?? 0
-          );
+          if (creditError) {
+            console.error(
+              "Erro ao carregar créditos:",
+              creditError
+            );
+          } else {
+            setCredits(creditData?.credits ?? 0);
+          }
         }
 
-        const userPlan =
-          await getUserPlan();
+        const userPlan = await getUserPlan();
 
-        setPlan(userPlan);
+        if (mentor) {
+          setPlan({
+            plan_name: "Mentor",
+            price: 0,
+            messages_limit: null,
+            features: [
+              "Acesso vitalício",
+              "Mensagens ilimitadas",
+              "Memória completa",
+              "Histórico de conversas",
+              "Todos os recursos",
+            ],
+          });
+        } else {
+          setPlan(userPlan);
+        }
       } catch (error) {
         console.error(
           "Erro ao carregar perfil:",
@@ -88,16 +106,11 @@ export default function ProfileCard() {
     );
   }
 
-  const isMentor =
-    plan?.plan_name === "Mentor";
-
   return (
     <div>
       <div className="flex items-center gap-4">
         <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-2xl font-bold">
-          {name
-            .charAt(0)
-            .toUpperCase()}
+          {name.charAt(0).toUpperCase()}
         </div>
 
         <div>
@@ -118,8 +131,7 @@ export default function ProfileCard() {
           </h3>
 
           <p className="text-2xl font-bold text-green-400 mt-2">
-            {plan?.plan_name ??
-              "Sem plano"}
+            {plan?.plan_name ?? "Sem plano"}
           </p>
         </div>
 
@@ -139,9 +151,7 @@ export default function ProfileCard() {
           </h3>
 
           <p className="text-2xl font-bold mt-2 text-white">
-            {isMentor
-              ? "Ilimitado"
-              : credits}
+            {isMentor ? "Ilimitado" : credits}
           </p>
         </div>
       </div>
