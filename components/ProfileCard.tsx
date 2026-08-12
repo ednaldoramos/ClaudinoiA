@@ -24,6 +24,9 @@ export default function ProfileCard() {
   const [isMentor, setIsMentor] = useState(false);
   const [plan, setPlan] = useState<UserPlan | null>(null);
 
+  const [showFeatures, setShowFeatures] =
+    useState(false);
+
   useEffect(() => {
     async function loadData() {
       try {
@@ -36,14 +39,25 @@ export default function ProfileCard() {
           return;
         }
 
-        console.log("CLAUDINOIA USER ID:", user.id);
-        console.log("CLAUDINOIA MENTOR ID:", MENTOR_USER_ID);
+        console.log(
+          "CLAUDINOIA USER ID:",
+          user.id
+        );
+
+        console.log(
+          "CLAUDINOIA MENTOR ID:",
+          MENTOR_USER_ID
+        );
 
         setUserId(user.id);
 
-        const mentor = user.id === MENTOR_USER_ID;
+        const mentor =
+          user.id === MENTOR_USER_ID;
 
-        console.log("CLAUDINOIA IS MENTOR:", mentor);
+        console.log(
+          "CLAUDINOIA IS MENTOR:",
+          mentor
+        );
 
         setIsMentor(mentor);
         setEmail(user.email ?? "");
@@ -71,11 +85,14 @@ export default function ProfileCard() {
               creditError
             );
           } else {
-            setCredits(creditData?.credits ?? 0);
+            setCredits(
+              creditData?.credits ?? 0
+            );
           }
         }
 
-        const userPlan = await getUserPlan();
+        const userPlan =
+          await getUserPlan();
 
         if (mentor) {
           setPlan({
@@ -164,29 +181,63 @@ export default function ProfileCard() {
         </div>
       </div>
 
+      {/* RECURSOS LIBERADOS */}
       <div className="mt-8">
-        <h3 className="text-xl font-bold mb-4 text-white">
-          Recursos Liberados
-        </h3>
+        <button
+          type="button"
+          onClick={() =>
+            setShowFeatures((prev) => !prev)
+          }
+          className="w-full flex items-center justify-between bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-xl p-5 text-left"
+        >
+          <div>
+            <h3 className="text-xl font-bold text-white">
+              Recursos Liberados
+            </h3>
 
-        <div className="space-y-3">
-          {plan?.features?.map(
-            (feature, index) => (
-              <div
-                key={index}
-                className="bg-zinc-800 rounded-lg p-4 text-white"
-              >
-                ✅ {feature}
+            <p className="text-sm text-zinc-400 mt-1">
+              {showFeatures
+                ? "Clique para ocultar os recursos"
+                : "Clique para visualizar os recursos"}
+            </p>
+          </div>
+
+          <span
+            className={`text-white text-xl transition-transform duration-200 ${
+              showFeatures
+                ? "rotate-180"
+                : ""
+            }`}
+          >
+            ▼
+          </span>
+        </button>
+
+        {showFeatures && (
+          <div className="mt-3 space-y-3">
+            {plan?.features?.map(
+              (feature, index) => (
+                <div
+                  key={index}
+                  className="bg-zinc-800 rounded-lg p-4 text-white border border-zinc-700"
+                >
+                  <span className="text-green-400 mr-2">
+                    ✓
+                  </span>
+
+                  {feature}
+                </div>
+              )
+            )}
+
+            {!plan?.features?.length && (
+              <div className="bg-zinc-800 rounded-lg p-4 text-zinc-400">
+                Nenhum recurso adicional
+                liberado.
               </div>
-            )
-          )}
-
-          {!plan?.features?.length && (
-            <div className="bg-zinc-800 rounded-lg p-4 text-zinc-400">
-              Nenhum recurso adicional liberado.
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="mt-6 bg-zinc-900 rounded-lg p-4 text-xs text-zinc-500">
