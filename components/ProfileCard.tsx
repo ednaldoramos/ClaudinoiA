@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 
@@ -209,7 +209,7 @@ export default function ProfileCard() {
                 : ""
             }`}
           >
-            ▼
+            ?
           </span>
         </button>
 
@@ -222,7 +222,7 @@ export default function ProfileCard() {
                   className="bg-zinc-800 rounded-lg p-4 text-white border border-zinc-700"
                 >
                   <span className="text-green-400 mr-2">
-                    ✓
+                    ?
                   </span>
 
                   {feature}
@@ -238,10 +238,6 @@ export default function ProfileCard() {
             )}
           </div>
         )}
-      </div>
-
-      <div className="mt-6 bg-zinc-900 rounded-lg p-4 text-xs text-zinc-500">
-        ID da sessão: {userId}
       </div>
     </div>
   );
