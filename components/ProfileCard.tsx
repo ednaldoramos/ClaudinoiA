@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 
@@ -181,7 +181,6 @@ export default function ProfileCard() {
         </div>
       </div>
 
-      {/* RECURSOS LIBERADOS */}
       <div className="mt-8">
         <button
           type="button"
@@ -203,14 +202,13 @@ export default function ProfileCard() {
           </div>
 
           <span
-            className={`text-white text-xl transition-transform duration-200 ${
+            aria-hidden="true"
+            className={`w-3 h-3 border-r-2 border-b-2 border-zinc-300 transition-transform duration-200 ${
               showFeatures
-                ? "rotate-180"
-                : ""
+                ? "rotate-[225deg] translate-y-1"
+                : "rotate-45 -translate-y-1"
             }`}
-          >
-            ?
-          </span>
+          />
         </button>
 
         {showFeatures && (
@@ -219,13 +217,16 @@ export default function ProfileCard() {
               (feature, index) => (
                 <div
                   key={index}
-                  className="bg-zinc-800 rounded-lg p-4 text-white border border-zinc-700"
+                  className="bg-zinc-800 rounded-lg p-4 text-white border border-zinc-700 flex items-center gap-3"
                 >
-                  <span className="text-green-400 mr-2">
-                    ?
+                  <span
+                    aria-hidden="true"
+                    className="w-5 h-5 rounded-full bg-green-600 flex items-center justify-center shrink-0"
+                  >
+                    <span className="w-2 h-1 border-l-2 border-b-2 border-white rotate-[-45deg] -translate-y-[1px]" />
                   </span>
 
-                  {feature}
+                  <span>{feature}</span>
                 </div>
               )
             )}
