@@ -36,5 +36,14 @@ export async function addMessageUsage(userId: string) {
     throw error;
   }
 
-  return data;
+  // A função SQL RETURNS TABLE, portanto
+  // o Supabase retorna um array de linhas.
+  const result = Array.isArray(data)
+    ? data[0]
+    : data;
+
+  return {
+    credits: Number(result?.credits ?? 0),
+    allowed: result?.allowed === true,
+  };
 }
