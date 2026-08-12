@@ -20,6 +20,7 @@ export default function ProfileCard() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [credits, setCredits] = useState(0);
+  const [userId, setUserId] = useState("");
   const [isMentor, setIsMentor] = useState(false);
   const [plan, setPlan] = useState<UserPlan | null>(null);
 
@@ -35,7 +36,14 @@ export default function ProfileCard() {
           return;
         }
 
+        console.log("CLAUDINOIA USER ID:", user.id);
+        console.log("CLAUDINOIA MENTOR ID:", MENTOR_USER_ID);
+
+        setUserId(user.id);
+
         const mentor = user.id === MENTOR_USER_ID;
+
+        console.log("CLAUDINOIA IS MENTOR:", mentor);
 
         setIsMentor(mentor);
         setEmail(user.email ?? "");
@@ -179,6 +187,10 @@ export default function ProfileCard() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="mt-6 bg-zinc-900 rounded-lg p-4 text-xs text-zinc-500">
+        ID da sessão: {userId}
       </div>
     </div>
   );
