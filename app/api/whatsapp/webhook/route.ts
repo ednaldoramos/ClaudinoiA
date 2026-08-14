@@ -1,14 +1,8 @@
-```typescript
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 
 const VERIFY_TOKEN =
   process.env.WHATSAPP_VERIFY_TOKEN || "ClaudinoIA_Webhook_2026";
 
-/**
- * GET
- *
- * Usado pela Meta para verificar o webhook.
- */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
 
@@ -30,20 +24,11 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json(
-    {
-      error: "Token de verificação inválido.",
-    },
-    {
-      status: 403,
-    }
+    { error: "Token de verificação inválido." },
+    { status: 403 }
   );
 }
 
-/**
- * POST
- *
- * Recebe eventos enviados pela Meta/WhatsApp.
- */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -54,12 +39,8 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json(
-      {
-        success: true,
-      },
-      {
-        status: 200,
-      }
+      { success: true },
+      { status: 200 }
     );
   } catch (error) {
     console.error(
@@ -68,13 +49,8 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json(
-      {
-        error: "Erro ao processar webhook.",
-      },
-      {
-        status: 500,
-      }
+      { error: "Erro ao processar webhook." },
+      { status: 500 }
     );
   }
 }
-```
