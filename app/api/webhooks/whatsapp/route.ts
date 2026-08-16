@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 
@@ -29,13 +29,43 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     console.log(
-      "📱 WhatsApp Webhook recebido:",
+      "WhatsApp Webhook recebido:",
       JSON.stringify(body, null, 2)
     );
 
+    if (body?.object !== "whatsapp_business_account") {
+      return NextResponse.json(
+        { error: "Evento não reconhecido" },
+        { status: 400 }
+      );
+    }
+
+    const entries = body?.entry ?? [];
+
+    for (const entry of entries) {
+      const changes = entry?.changes ?? [];
+
+      for (const change of changes) {
+        if (change?.field !== "messages") {
+          continue;
+        }
+
+        const value = change?.value;
+
+        const messages = value?.messages ?? [];
+
+        for (const message of messages) {
+          console.log(
+            "Nova mensagem WhatsApp:",
+            JSON.stringify(message, null, 2)
+          );
+        }
+      }
+    }
+
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("❌ Erro no webhook do WhatsApp:", error);
+    console.error("Erro no webhook do WhatsApp:", error);
 
     return NextResponse.json(
       { error: "Erro ao processar webhook" },
